@@ -16,7 +16,7 @@ services:
 
   # Spring Boot backend container
   backend:
-    build: .
+    build: ./scms-be
     container_name: scms-backend
     restart: always
     depends_on:
@@ -24,6 +24,18 @@ services:
     ports:
       - "8081:8081"
 
+  # React frontend container (served via Nginx)
+  frontend:
+    build:
+      context: ./scms-fe--
+      args:
+        VITE_API_BASE_URL: http://localhost:8081   # backend URL as seen by the BROWSER, not other containers
+    container_name: scms-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3001:80"   # host:container - visit http://localhost:3001
+
 volumes:
-    mysql-data:
- 
+  mysql-data:
