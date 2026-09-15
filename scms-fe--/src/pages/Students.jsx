@@ -1,17 +1,14 @@
 import { useState, useEffect } from "react";
 import api from "../api/axiosConfig";
-import { useAuth } from "../context/AuthContext";
 
-// Students page - full CRUD UI for admins, read-only view for regular users
+// Students page - full CRUD UI for the /api/students backend endpoints
 function Students() {
-  const { role } = useAuth();
-  const isAdmin = role === "ROLE_ADMIN";
-
   const [students, setStudents] = useState([]);
   const [form, setForm] = useState({ name: "", email: "", age: "" });
-  const [editingId, setEditingId] = useState(null);
+  const [editingId, setEditingId] = useState(null); // null = adding, else = editing that id
   const [error, setError] = useState("");
 
+  // Fetch all students - runs once when the page loads
   useEffect(() => {
     fetchStudents();
   }, []);
@@ -19,7 +16,7 @@ function Students() {
   const fetchStudents = async () => {
     try {
       const response = await api.get("/api/students");
-      setStudents(response.data.content);
+      setStudents(response.data.content); // Page object - actual list is in .content
     } catch (err) {
       setError("Failed to load students");
     }
@@ -29,6 +26,7 @@ function Students() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // Handles both Create (POST) and Update (PUT) based on editingId
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -41,13 +39,18 @@ function Students() {
       }
       setForm({ name: "", email: "", age: "" });
       setEditingId(null);
-      fetchStudents();
+      fetchStudents(); // refresh list after change
     } catch (err) {
       const apiError = err.response?.data;
-      setError(apiError?.message || "Save failed");
+      setError(
+        typeof apiError === "object"
+          ? Object.values(apiError).join(", ")
+          : "Save failed",
+      );
     }
   };
 
+  // Loads a student's data into the form for editing
   const handleEdit = (student) => {
     setForm({ name: student.name, email: student.email, age: student.age });
     setEditingId(student.id);
@@ -71,18 +74,38 @@ function Students() {
     <div className="page-container">
       <h2>Students</h2>
 
-      {/* Add/Edit form only visible to admins */}
-      {isAdmin && (
-        <form onSubmit={handleSubmit} className="form-row">
-          <input type="text" name="name" placeholder="Name" value={form.name} onChange={handleChange} required />
-          <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} required />
-          <input type="number" name="age" placeholder="Age" value={form.age} onChange={handleChange} required />
-          <button type="submit">{editingId ? "Update" : "Add"} Student</button>
-          {editingId && <button type="button" onClick={handleCancelEdit}>Cancel</button>}
-        </form>
-      )}
-
-      {!isAdmin && <p><em>Read-only view. Admin login required to add/edit/delete.</em></p>}
+      <form onSubmit={handleSubmit} className="form-row">
+        <input
+          type="text"
+          name="name"
+          placeholder="Name"
+          value={form.name}
+          onChange={handleChange}
+          required
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          value={form.email}
+          onChange={handleChange}
+          required
+        />
+        <input
+          type="number"
+          name="age"
+          placeholder="Age"
+          value={form.age}
+          onChange={handleChange}
+          required
+        />
+        <button type="submit">{editingId ? "Update" : "Add"} Student</button>
+        {editingId && (
+          <button type="button" onClick={handleCancelEdit}>
+            Cancel
+          </button>
+        )}
+      </form>
 
       {error && <p className="error">{error}</p>}
 
@@ -93,7 +116,7 @@ function Students() {
             <th>Name</th>
             <th>Email</th>
             <th>Age</th>
-            {isAdmin && <th>Actions</th>}
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -103,12 +126,20 @@ function Students() {
               <td>{s.name}</td>
               <td>{s.email}</td>
               <td>{s.age}</td>
-              {isAdmin && (
-                <td>
-                  <button className="action-btn edit-btn" onClick={() => handleEdit(s)}>Edit</button>
-                  <button className="action-btn delete-btn" onClick={() => handleDelete(s.id)}>Delete</button>
-                </td>
-              )}
+              <td>
+                <button
+                  className="action-btn edit-btn"
+                  onClick={() => handleEdit(s)}
+                >
+                  Edit
+                </button>
+                <button
+                  className="action-btn delete-btn"
+                  onClick={() => handleDelete(s.id)}
+                >
+                  Delete
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
