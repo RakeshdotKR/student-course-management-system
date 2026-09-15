@@ -1,12 +1,8 @@
 import { useState, useEffect } from "react";
 import api from "../api/axiosConfig";
-import { useAuth } from "../context/AuthContext";
 
-// Courses page - full CRUD UI for admins, read-only view for regular users
+// Courses page - full CRUD UI for the /api/courses backend endpoints
 function Courses() {
-  const { role } = useAuth();
-  const isAdmin = role === "ROLE_ADMIN";
-
   const [courses, setCourses] = useState([]);
   const [students, setStudents] = useState([]); // used to populate the student dropdown
   const [form, setForm] = useState({
@@ -28,7 +24,7 @@ function Courses() {
     try {
       const response = await api.get("/api/courses");
 
-      // If response.data.content exists, use it.
+      // Fixed: If response.data.content exists, use it.
       // If it doesn't, try response.data. If both fail, fall back to an empty array [].
       const dataPayload = response.data?.content || response.data || [];
       setCourses(dataPayload);
@@ -41,7 +37,7 @@ function Courses() {
     try {
       const response = await api.get("/api/students");
 
-      // Handles cases where students endpoint returns a wrapped object or page wrapper
+      // Fixed: Handles cases where students endpoint returns a wrapped object or page wrapper
       const studentData = response.data?.content || response.data || [];
       setStudents(Array.isArray(studentData) ? studentData : []);
     } catch (err) {
@@ -69,7 +65,11 @@ function Courses() {
       fetchCourses();
     } catch (err) {
       const apiError = err.response?.data;
-      setError(apiError?.message || "Save failed");
+      setError(
+        typeof apiError === "object"
+          ? Object.values(apiError).join(", ")
+          : "Save failed",
+      );
     }
   };
 
@@ -116,50 +116,45 @@ function Courses() {
     <div className="page-container">
       <h2>Courses</h2>
 
-      {/* Add/Edit form only visible to admins */}
-      {isAdmin && (
-        <form onSubmit={handleSubmit} className="form-row">
-          <input
-            type="text"
-            name="courseName"
-            placeholder="Course Name"
-            value={form.courseName}
-            onChange={handleChange}
-            required
-          />
-          <input
-            type="text"
-            name="courseCode"
-            placeholder="Course Code"
-            value={form.courseCode}
-            onChange={handleChange}
-            required
-          />
-          <select
-            name="studentId"
-            value={form.studentId}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select Student</option>
-            {Array.isArray(students) &&
-              students.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} (id: {s.id})
-                </option>
-              ))}
-          </select>
+      <form onSubmit={handleSubmit} className="form-row">
+        <input
+          type="text"
+          name="courseName"
+          placeholder="Course Name"
+          value={form.courseName}
+          onChange={handleChange}
+          required
+        />
+        <input
+          type="text"
+          name="courseCode"
+          placeholder="Course Code"
+          value={form.courseCode}
+          onChange={handleChange}
+          required
+        />
+        <select
+          name="studentId"
+          value={form.studentId}
+          onChange={handleChange}
+          required
+        >
+          <option value="">Select Student</option>
+          {Array.isArray(students) &&
+            students.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} (id: {s.id})
+              </option>
+            ))}
+        </select>
 
-          <button type="submit">{editingId ? "Update" : "Add"} Course</button>
-          {editingId && (
-            <button type="button" onClick={handleCancelEdit}>
-              Cancel
-            </button>
-          )}
-        </form>
-      )}
-
-      {!isAdmin && <p><em>Read-only view. Admin login required to add/edit/delete.</em></p>}
+        <button type="submit">{editingId ? "Update" : "Add"} Course</button>
+        {editingId && (
+          <button type="button" onClick={handleCancelEdit}>
+            Cancel
+          </button>
+        )}
+      </form>
 
       <div className="form-row">
         <select value={filterStudentId} onChange={handleFilterChange}>
@@ -182,39 +177,37 @@ function Courses() {
             <th>Course Name</th>
             <th>Course Code</th>
             <th>Student ID</th>
-            {isAdmin && <th>Actions</th>}
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {Array.isArray(courses) && courses.length > 0 ? (
+          {Array.isArray(courses) ? (
             courses.map((c) => (
               <tr key={c.id}>
                 <td>{c.id}</td>
                 <td>{c.courseName}</td>
                 <td>{c.courseCode}</td>
                 <td>{c.studentId}</td>
-                {isAdmin && (
-                  <td>
-                    <button
-                      className="action-btn edit-btn"
-                      onClick={() => handleEdit(c)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="action-btn delete-btn"
-                      onClick={() => handleDelete(c.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                )}
+                <td>
+                  <button
+                    className="action-btn edit-btn"
+                    onClick={() => handleEdit(c)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="action-btn delete-btn"
+                    onClick={() => handleDelete(c.id)}
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan={isAdmin ? 5 : 4} style={{ textAlign: "center" }}>
-                No courses available.
+              <td colSpan="5" style={{ textAlign: "center" }}>
+                No courses available or data format mismatch.
               </td>
             </tr>
           )}
