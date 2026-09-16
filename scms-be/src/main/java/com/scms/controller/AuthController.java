@@ -36,7 +36,7 @@ public class AuthController {
 
     private static final List<String> VALID_ROLES = List.of("ROLE_USER", "ROLE_ADMIN");
 
-    // REGISTER - POST /api/auth/register
+    // REGISTER API - POST /api/auth/register
     @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
         User user = new User();
