@@ -18,14 +18,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-// Final security configuration with Role-Based Access Control.
-// ROLE_USER: can read (GET) students/courses.
-// ROLE_ADMIN: can create/update/delete (POST/PUT/DELETE) in addition to reading.
+// Final security configuration with Role-Based Access Control + Rate Limiting.
 @Configuration
 public class SecurityConfig {
 
     @Autowired
     private JwtAuthFilter jwtAuthFilter;
+
+    @Autowired
+    private RateLimitFilter rateLimitFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -35,21 +36,17 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
-
-                // Reads - any authenticated user (USER or ADMIN)
                 .requestMatchers(HttpMethod.GET, "/api/students/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/courses/**").hasAnyRole("USER", "ADMIN")
-
-                // Writes - ADMIN only
                 .requestMatchers(HttpMethod.POST, "/api/students/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/students/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/students/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/courses/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/courses/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/courses/**").hasRole("ADMIN")
-
                 .anyRequest().authenticated()
             )
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -68,7 +65,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3001"));
+        config.setAllowedOrigins(List.of(
+            "http://localhost:5173",
+            "http://localhost:3001"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
